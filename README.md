@@ -29,36 +29,37 @@ Climate-Policy-Maker/
 │── .gitignore  
 │── README.md  
 └── myenv/              # Virtual environment (ignored)  
-
 ---
 
 ## ⚙️ Installation & Setup
-1️⃣ Clone the repository  
-git clone https://github.com/Abdul00YO/Climate-Policy-Maker.git  
-cd Climate-Policy-Maker  
 
-2️⃣ Create virtual environment  
-python -m venv myenv  
+### 1️⃣ Clone the Repository
+$ git clone https://github.com/Abdul00YO/Climate-Policy-Maker.git  
+$ cd Climate-Policy-Maker  
 
-3️⃣ Activate venv  
-- Windows:  
-  myenv\Scripts\activate  
-- Mac/Linux:  
-  source myenv/bin/activate  
+### 2️⃣ Create & Activate Virtual Environment
+- **Windows (PowerShell)**
+  $ python -m venv myenv  
+  $ myenv\Scripts\activate  
 
-4️⃣ Install dependencies  
-pip install -r requirements.txt  
+- **Mac/Linux**
+  $ python3 -m venv myenv  
+  $ source myenv/bin/activate  
+
+### 3️⃣ Install Dependencies
+$ pip install -r requirements.txt  
 
 ---
 
-## ▶️ Running the App
-### Start FastAPI Backend  
-uvicorn app:app --reload  
-Runs on → http://127.0.0.1:8000  
+## ▶️ Running the Application
 
-### Start Streamlit Frontend  
-streamlit run frontend.py  
-Runs on → http://localhost:8501  
+### Start Backend (FastAPI)
+$ uvicorn app:app --reload  
+👉 Runs at: http://127.0.0.1:8000  
+
+### Start Frontend (Streamlit)
+$ streamlit run frontend.py  
+👉 Runs at: http://localhost:8501  
 
 ---
 
