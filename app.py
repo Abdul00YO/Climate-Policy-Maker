@@ -21,7 +21,7 @@ st.set_page_config(
 
 st.title("🌿 AI Climate Policy Maker")
 
-API_URL = os.getenv("BACKEND_URL", "http://localhost:8000")  # FastAPI base
+API_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")  # FastAPI base
 
 
 # --------- Helpers ---------
