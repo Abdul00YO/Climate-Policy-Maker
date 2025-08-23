@@ -194,7 +194,7 @@ with tab_raw:
 
 # --------- Visualizations Tab ---------
 with tab_viz:
-    st.subheader("Daily Weather (Open-Meteo)")
+    st.subheader("Forecast (Next 7 Days)")
     if not data:
         st.info("Generate first.")
     else:
