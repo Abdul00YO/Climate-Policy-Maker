@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: AI-Climate-Policy-Maker
+    name: Climate-Policy-Maker
     env: docker
     plan: free
     dockerfilePath: ./Dockerfile
