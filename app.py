@@ -129,8 +129,8 @@ def show_pdf_inline(pdf_bytes: bytes, height: int = 600):
 # --------- Sidebar Controls ---------
 with st.sidebar:
     st.header("⚙️ Controls")
-    city = st.text_input("City", value="London")
-    user_prompt = st.text_area("Custom Prompt", value="Suggest climate-friendly policies for this city.")
+    city = st.text_input("City", value="Mansehra")
+    user_prompt = st.text_area("Custom Prompt (If you don't get any response, try adding 'policy', 'climate' or 'weather' word in the prompt.)", value="Suggest climate-friendly policy for this city.")
     model = st.selectbox("LLM Model", ["gpt-4o-mini", "gpt-5-nano"])
     temperature = st.slider("Creativity (temperature)", 0.0, 1.0, 0.4, 0.1)
     run = st.button("Generate / Refresh")

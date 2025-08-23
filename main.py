@@ -63,7 +63,7 @@ def generate_policy(
     # Guard: reject non-climate prompts
     if not any(
         word in user_prompt.lower()
-        for word in ["climate", "weather", "environment", "sustainability", "policy", "green", "energy"]
+        for word in ["climate", "weather", "environment", "sustainability", "policy", "green", "energy", "emission", "carbon", "pollution", "temperature", "precipitation", "flood", "drought"]
     ):
         return {"message": "❌ This model is designed for climate-related problems. Please provide a climate-related prompt."}
 
@@ -74,7 +74,7 @@ def generate_policy(
     payload = {
         "model": model,
         "temperature": temperature,
-        "max_tokens": 1000,
+        "max_tokens": 250,
         "messages": [
             {"role": "system", "content": "You are a climate policy expert."},
             {"role": "user", "content": f"{user_prompt}\n\nHere is weather data for {city}: {weather_data} \n\nPlease provide a detailed climate policy response according to this template \n\n {policy_template}"},
