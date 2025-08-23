@@ -5,8 +5,12 @@ import requests
 import pandas as pd
 import streamlit as st
 from datetime import datetime
+from geopy.geocoders import Nominatim
+import folium
+from streamlit_folium import st_folium
+from folium.plugins import MiniMap, Fullscreen, MeasureControl, MousePosition
 
-st.title("🌿 AI Climate Policy Maker")
+
 # --------- App Config ---------
 st.set_page_config(
     page_title="Climate Policy Maker",
@@ -14,6 +18,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+st.title("🌿 AI Climate Policy Maker")
 
 API_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")  # FastAPI base
 
@@ -56,7 +62,7 @@ def render_pdf(policy_text: str, city: str, weather_summary: str) -> bytes:
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import cm
         from reportlab.lib import colors
-        from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+        from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
     except Exception:
         st.warning("Install 'reportlab' for PDF export: pip install reportlab")
         return b""
@@ -72,26 +78,21 @@ def render_pdf(policy_text: str, city: str, weather_summary: str) -> bytes:
     styles.add(ParagraphStyle(name="Body", fontSize=11, leading=16, alignment=TA_JUSTIFY))
 
     story = []
-
-    # --- Title Page ---
     story.append(Spacer(1, 3*cm))
     story.append(Paragraph(f"🌍 Climate Policy Report", styles["TitleMain"]))
     story.append(Paragraph(f"City: <b>{city}</b>", styles["Subtle"]))
     story.append(Paragraph(f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Subtle"]))
     story.append(PageBreak())
 
-    # --- Weather Summary ---
     story.append(Paragraph("📊 Weather Summary", styles["Heading"]))
     story.append(Spacer(1, 0.3*cm))
     for line in weather_summary.split("\n"):
         story.append(Paragraph(line, styles["Body"]))
     story.append(Spacer(1, 1*cm))
 
-    # --- Policy Recommendations ---
     story.append(Paragraph("🌱 Policy Recommendations", styles["Heading"]))
     story.append(Spacer(1, 0.3*cm))
 
-    # Detect bullet points in policy text
     bullets = []
     for line in policy_text.split("\n"):
         if line.strip().startswith("-") or line.strip().startswith("*"):
@@ -103,7 +104,6 @@ def render_pdf(policy_text: str, city: str, weather_summary: str) -> bytes:
     if bullets:
         story.append(ListFlowable(bullets, bulletType="bullet", leftIndent=15))
 
-    # Footer callback
     def footer(canvas, doc):
         canvas.saveState()
         canvas.setFont("Helvetica", 8)
@@ -114,7 +114,6 @@ def render_pdf(policy_text: str, city: str, weather_summary: str) -> bytes:
     doc.build(story, onLaterPages=footer, onFirstPage=footer)
     buffer.seek(0)
     return buffer.read()
-
 
 
 def show_pdf_inline(pdf_bytes: bytes, height: int = 600):
@@ -129,11 +128,23 @@ def show_pdf_inline(pdf_bytes: bytes, height: int = 600):
 # --------- Sidebar Controls ---------
 with st.sidebar:
     st.header("⚙️ Controls")
-    city = st.text_input("City", value="Mansehra")
-    user_prompt = st.text_area("Custom Prompt (If you don't get any response, try adding 'policy', 'climate' or 'weather' word in the prompt.)", value="Suggest climate-friendly policy for this city.")
+    city = st.text_input("City", value="Lahore")
+    user_prompt = st.text_area("Custom Prompt", value="Suggest climate-friendly policy for this city.")
     model = st.selectbox("LLM Model", ["gpt-4o-mini", "gpt-5-nano"])
     temperature = st.slider("Creativity (temperature)", 0.0, 1.0, 0.4, 0.1)
     run = st.button("Generate / Refresh")
+
+# Geocode city for map centering
+lat, lon = 31.5497, 74.3436  # default Lahore
+if city:
+    try:
+        geolocator = Nominatim(user_agent="climate-map-app")
+        loc = geolocator.geocode(city, timeout=10)
+        if loc:
+            lat, lon = loc.latitude, loc.longitude
+    except Exception:
+        pass
+
 
 # --------- Tabs ---------
 tab_policy, tab_raw, tab_viz, tab_export = st.tabs(
@@ -171,6 +182,7 @@ with tab_policy:
         cols[1].metric("Model", model)
         cols[2].metric("Generated", datetime.now().strftime("%H:%M:%S"))
 
+
 # --------- Raw Data Tab ---------
 with tab_raw:
     st.subheader("Raw API Payloads")
@@ -178,6 +190,7 @@ with tab_raw:
         st.info("Generate first.")
     else:
         st.json(data)
+
 
 # --------- Visualizations Tab ---------
 with tab_viz:
@@ -216,6 +229,69 @@ with tab_viz:
                 ax.set_title("Daily Precipitation")
                 plt.xticks(rotation=45)
                 st.pyplot(fig)
+
+    # --------- Interactive Map ---------
+    st.subheader("🌍 Climate Map")
+
+    BASEMAPS = {
+        "OpenStreetMap": folium.TileLayer("OpenStreetMap", name="OpenStreetMap", control=False),
+        "CartoDB Positron": folium.TileLayer(
+            tiles="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+            attr="© OpenStreetMap contributors © CARTO",
+            name="CartoDB Positron",
+            control=False,
+        ),
+        "CartoDB DarkMatter": folium.TileLayer(
+            tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+            attr="© OpenStreetMap contributors © CARTO",
+            name="CartoDB DarkMatter",
+            control=False,
+        ),
+        "OpenTopoMap": folium.TileLayer(
+            tiles="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+            attr="Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap (CC-BY-SA)",
+            name="OpenTopoMap",
+            control=False,
+        ),
+    }
+
+    HAZARD_TILES = {
+        "Drought Risk": "https://tiles.developmentseed.org/worldbank/climate/drought/{z}/{x}/{y}.png",
+        "Flood Risk":   "https://tiles.developmentseed.org/worldbank/climate/flood/{z}/{x}/{y}.png",
+        "Heat Stress":  "https://tiles.developmentseed.org/worldbank/climate/heat/{z}/{x}/{y}.png",
+    }
+
+    base_map = st.selectbox("Base map", list(BASEMAPS.keys()), index=0)
+    hazard = st.selectbox("Climate hazard overlay", ["(None)"] + list(HAZARD_TILES.keys()), index=0)
+    opacity = st.slider("Overlay opacity", 0.0, 1.0, 0.6, 0.05)
+
+    m = folium.Map(location=[lat, lon], zoom_start=6, control_scale=True)
+    BASEMAPS[base_map].add_to(m)
+
+    if hazard != "(None)":
+        folium.TileLayer(
+            tiles=HAZARD_TILES[hazard],
+            name=hazard,
+            attr="World Bank Climate (Development Seed tiles)",
+            overlay=True,
+            control=True,
+            opacity=opacity,
+        ).add_to(m)
+
+    folium.Marker([lat, lon], tooltip=f"{city} ({lat:.4f}, {lon:.4f})").add_to(m)
+    MiniMap(toggle_display=True).add_to(m)
+    Fullscreen().add_to(m)
+    m.add_child(MeasureControl(position="topleft", primary_length_unit='kilometers'))
+    MousePosition(position='bottomright', prefix="Lat/Lon:")
+
+    folium.LayerControl(collapsed=True).add_to(m)
+
+    map_state = st_folium(m, width=None, height=600, returned_objects=["last_object_clicked", "center", "zoom"])
+
+    if map_state and map_state.get("last_object_clicked"):
+        click = map_state["last_object_clicked"]
+        st.info(f"🖱️ Last clicked at: lat={click['lat']:.6f}, lon={click['lng']:.6f}")
+
 
 # --------- Export Tab ---------
 with tab_export:
