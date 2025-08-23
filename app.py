@@ -52,11 +52,11 @@ def to_daily_dataframe(openmeteo_json: dict) -> pd.DataFrame:
 def render_pdf(policy_text: str, city: str, weather_summary: str) -> bytes:
     try:
         from reportlab.lib.pagesizes import A4
-        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, PageBreak, ListFlowable, ListItem
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import cm
         from reportlab.lib import colors
-        from reportlab.lib.enums import TA_LEFT
+        from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
     except Exception:
         st.warning("Install 'reportlab' for PDF export: pip install reportlab")
         return b""
@@ -66,25 +66,55 @@ def render_pdf(policy_text: str, city: str, weather_summary: str) -> bytes:
                             topMargin=2*cm, bottomMargin=2*cm)
 
     styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name="TitleBold", fontSize=16, leading=20, spaceAfter=12, alignment=TA_LEFT))
-    styles.add(ParagraphStyle(name="Subtle", fontSize=10, textColor=colors.grey, spaceAfter=10))
-    styles.add(ParagraphStyle(name="Body", fontSize=11, leading=16))
+    styles.add(ParagraphStyle(name="TitleMain", fontSize=20, leading=26, alignment=TA_CENTER, textColor=colors.HexColor("#2E7D32"), spaceAfter=20))
+    styles.add(ParagraphStyle(name="Subtle", fontSize=10, textColor=colors.grey, spaceAfter=10, alignment=TA_CENTER))
+    styles.add(ParagraphStyle(name="Heading", fontSize=14, leading=18, textColor=colors.HexColor("#1B5E20"), spaceAfter=8))
+    styles.add(ParagraphStyle(name="Body", fontSize=11, leading=16, alignment=TA_JUSTIFY))
 
-    story = [
-        Paragraph(f"Climate Policy Recommendations for {city}", styles["TitleBold"]),
-        Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Subtle"]),
-        Paragraph("<b>Weather Summary:</b>", styles["Body"]),
-        Spacer(1, 6),
-        Paragraph(weather_summary.replace("\n", "<br/>"), styles["Body"]),
-        Spacer(1, 12),
-        Paragraph("<b>Policy Recommendations:</b>", styles["Body"]),
-        Spacer(1, 6),
-        Paragraph(policy_text.replace("\n", "<br/>"), styles["Body"]),
-    ]
+    story = []
 
-    doc.build(story)
+    # --- Title Page ---
+    story.append(Spacer(1, 3*cm))
+    story.append(Paragraph(f"🌍 Climate Policy Report", styles["TitleMain"]))
+    story.append(Paragraph(f"City: <b>{city}</b>", styles["Subtle"]))
+    story.append(Paragraph(f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Subtle"]))
+    story.append(PageBreak())
+
+    # --- Weather Summary ---
+    story.append(Paragraph("📊 Weather Summary", styles["Heading"]))
+    story.append(Spacer(1, 0.3*cm))
+    for line in weather_summary.split("\n"):
+        story.append(Paragraph(line, styles["Body"]))
+    story.append(Spacer(1, 1*cm))
+
+    # --- Policy Recommendations ---
+    story.append(Paragraph("🌱 Policy Recommendations", styles["Heading"]))
+    story.append(Spacer(1, 0.3*cm))
+
+    # Detect bullet points in policy text
+    bullets = []
+    for line in policy_text.split("\n"):
+        if line.strip().startswith("-") or line.strip().startswith("*"):
+            bullets.append(ListItem(Paragraph(line.strip("-* ").strip(), styles["Body"])))
+        elif line.strip():
+            story.append(Paragraph(line.strip(), styles["Body"]))
+            story.append(Spacer(1, 0.2*cm))
+
+    if bullets:
+        story.append(ListFlowable(bullets, bulletType="bullet", leftIndent=15))
+
+    # Footer callback
+    def footer(canvas, doc):
+        canvas.saveState()
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.grey)
+        canvas.drawCentredString(A4[0]/2, 1*cm, "AI Climate Policy Maker — Generated Report")
+        canvas.restoreState()
+
+    doc.build(story, onLaterPages=footer, onFirstPage=footer)
     buffer.seek(0)
     return buffer.read()
+
 
 
 def show_pdf_inline(pdf_bytes: bytes, height: int = 600):
