@@ -1,9 +1,20 @@
 services:
   - type: web
-    name: Climate-Policy-Maker
+    name: climate-backend
     env: docker
     plan: free
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./backend/Dockerfile
+    envVars:
+      - key: PORT
+        value: 8000
+
+  - type: web
+    name: climate-frontend
+    env: docker
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile
     envVars:
       - key: PORT
         value: 8501
+      - key: BACKEND_URL
+        value: https://climate-backend.onrender.com
