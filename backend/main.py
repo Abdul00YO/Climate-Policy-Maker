@@ -74,7 +74,7 @@ def generate_policy(
     payload = {
         "model": model,
         "temperature": temperature,
-        "max_tokens": 250,
+        "max_tokens": 1000,
         "messages": [
             {"role": "system", "content": "You are a climate policy expert."},
             {"role": "user", "content": f"{user_prompt}\n\nHere is weather data for {city}: {weather_data} \n\nPlease provide a detailed climate policy response according to this template \n\n {policy_template}"},
